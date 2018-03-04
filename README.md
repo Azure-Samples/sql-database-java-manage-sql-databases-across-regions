@@ -1,13 +1,13 @@
 ---
 services: Sql
 platforms: java
-author: anudeepsharma
+author: milismsft
 ---
 
 ## Getting Started with Sql - Manage Sql Databases Across Different Data Centers - in Java ##
 
 
-  Azure Storage sample for managing SQL Database -
+  Azure SQL sample for managing SQL Database -
    - Create 3 SQL Servers in different region.
    - Create a master database in master SQL Server.
    - Create 2 more SQL Servers in different azure regions
