@@ -4,12 +4,12 @@ languages:
 - java
 products:
 - azure
-services: Sql
-platforms: java
-author: yaohaizh
+extensions:
+- services: Sql
+- platforms: java
 ---
 
-## Getting Started with Sql - Manage Sql Databases Across Different Data Centers - in Java ##
+# Getting Started with Sql - Manage Sql Databases Across Different Data Centers - in Java #
 
 
   Azure SQL sample for managing SQL Database -
