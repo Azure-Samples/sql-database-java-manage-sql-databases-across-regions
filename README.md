@@ -4,9 +4,8 @@ languages:
 - java
 products:
 - azure
-extensions:
-- services: Sql
-- platforms: java
+description: "Getting Started with Sql - Manage Sql Databases Across Different Data Centers - in Java"
+urlFragment: sql-database-java-manage-sql-databases-across-regions
 ---
 
 # Getting Started with Sql - Manage Sql Databases Across Different Data Centers - in Java #
