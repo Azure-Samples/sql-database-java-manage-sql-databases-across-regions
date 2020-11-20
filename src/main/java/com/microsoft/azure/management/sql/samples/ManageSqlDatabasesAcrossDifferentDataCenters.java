@@ -6,26 +6,25 @@
 
 package com.microsoft.azure.management.sql.samples;
 
-import com.microsoft.azure.AzureEnvironment;
-import com.microsoft.azure.AzureResponseBuilder;
-import com.microsoft.azure.credentials.ApplicationTokenCredentials;
-import com.microsoft.azure.management.Azure;
-import com.microsoft.azure.management.compute.KnownWindowsVirtualMachineImage;
-import com.microsoft.azure.management.compute.VirtualMachine;
-import com.microsoft.azure.management.compute.VirtualMachineSizeTypes;
-import com.microsoft.azure.management.network.Network;
-import com.microsoft.azure.management.network.PublicIPAddress;
-import com.microsoft.azure.management.resources.fluentcore.arm.Region;
-import com.microsoft.azure.management.resources.fluentcore.model.Creatable;
+import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.policy.HttpLogDetailLevel;
+import com.azure.core.management.AzureEnvironment;
+import com.azure.core.management.Region;
+import com.azure.core.management.profile.AzureProfile;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.resourcemanager.AzureResourceManager;
+import com.azure.resourcemanager.compute.models.KnownWindowsVirtualMachineImage;
+import com.azure.resourcemanager.compute.models.VirtualMachine;
+import com.azure.resourcemanager.compute.models.VirtualMachineSizeTypes;
+import com.azure.resourcemanager.network.models.Network;
+import com.azure.resourcemanager.network.models.PublicIpAddress;
+import com.azure.resourcemanager.resources.fluentcore.model.Creatable;
+import com.azure.resourcemanager.sql.models.CreateMode;
+import com.azure.resourcemanager.sql.models.DatabaseEdition;
+import com.azure.resourcemanager.sql.models.SqlDatabase;
+import com.azure.resourcemanager.sql.models.SqlFirewallRule;
+import com.azure.resourcemanager.sql.models.SqlServer;
 import com.microsoft.azure.management.samples.Utils;
-import com.microsoft.azure.management.sql.CreateMode;
-import com.microsoft.azure.management.sql.DatabaseEdition;
-import com.microsoft.azure.management.sql.SqlDatabase;
-import com.microsoft.azure.management.sql.SqlFirewallRule;
-import com.microsoft.azure.management.sql.SqlServer;
-import com.microsoft.azure.serializer.AzureJacksonAdapter;
-import com.microsoft.rest.LogLevel;
-import com.microsoft.rest.RestClient;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -36,28 +35,30 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Azure SQL sample for managing SQL Database -
- *  - Create 3 SQL Servers in different region.
- *  - Create a master database in master SQL Server.
- *  - Create 2 more SQL Servers in different azure regions
- *  - Create secondary read only databases in these server with source as database in server created in step 1.
- *  - Create 5 virtual networks in different regions.
- *  - Create one VM in each of the virtual network.
- *  - Update all three databases to have firewall rules with range of each of the virtual network.
+ * Azure SQL sample for managing SQL Database - - Create 3 SQL Servers in
+ * different region. - Create a master database in master SQL Server. - Create 2
+ * more SQL Servers in different azure regions - Create secondary read only
+ * databases in these server with source as database in server created in step
+ * 1. - Create 5 virtual networks in different regions. - Create one VM in each
+ * of the virtual network. - Update all three databases to have firewall rules
+ * with range of each of the virtual network.
  */
 
 public final class ManageSqlDatabasesAcrossDifferentDataCenters {
 
     /**
      * Main function which runs the actual sample.
-     * @param azure instance of the azure client
+     * 
+     * @param azureResourceManager instance of the azureResourceManager client
      * @return true if sample runs successfully
      */
-    public static boolean runSample(Azure azure) {
-        final String sqlServerName = Utils.createRandomName("sqlserver");
-        final String rgName = Utils.createRandomName("rgRSSDRE");
+    public static boolean runSample(AzureResourceManager azureResourceManager) {
+        final String sqlServerName = Utils.randomResourceName(azureResourceManager, "sqlserver", 15);
+        final String rgName = Utils.randomResourceName(azureResourceManager, "rgRSSDRE", 15);
         final String administratorLogin = "sqladmin3423";
-        // [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification="Serves as an example, not for deployment. Please change when using this in your code.")]
+        // [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine",
+        // Justification="Serves as an example, not for deployment. Please change when
+        // using this in your code.")]
         final String administratorPassword = "myS3cureP@ssword";
         final String slaveSqlServer1Name = "slave1sql";
         final String slaveSqlServer2Name = "slave2sql";
@@ -68,12 +69,9 @@ public final class ManageSqlDatabasesAcrossDifferentDataCenters {
 
             // ============================================================
             // Create a SQL Server, with 2 firewall rules.
-            SqlServer masterSqlServer = azure.sqlServers().define(sqlServerName)
-                    .withRegion(Region.US_EAST)
-                    .withNewResourceGroup(rgName)
-                    .withAdministratorLogin(administratorLogin)
-                    .withAdministratorPassword(administratorPassword)
-                    .create();
+            SqlServer masterSqlServer = azureResourceManager.sqlServers().define(sqlServerName)
+                    .withRegion(Region.US_EAST).withNewResourceGroup(rgName).withAdministratorLogin(administratorLogin)
+                    .withAdministratorPassword(administratorPassword).create();
 
             Utils.print(masterSqlServer);
 
@@ -81,48 +79,38 @@ public final class ManageSqlDatabasesAcrossDifferentDataCenters {
             // Create a Database in master SQL server created above.
             System.out.println("Creating a database");
 
-            SqlDatabase masterDatabase = masterSqlServer.databases().define(databaseName)
-                    .withEdition(DatabaseEdition.BASIC)
-                    .create();
+            SqlDatabase masterDatabase = masterSqlServer.databases().define(databaseName).withBasicEdition().create();
             Utils.print(masterDatabase);
 
             // ============================================================
             // Create secondary SQLServer/Database for the master database
             System.out.println("Creating server in secondary location for master SQL Server");
 
-            SqlServer sqlServerInSecondaryLocation = azure.sqlServers()
-                    .define(Utils.createRandomName(slaveSqlServer1Name))
-                        .withRegion(Region.US_EAST2)
-                        .withExistingResourceGroup(rgName)
-                        .withAdministratorLogin(administratorLogin)
-                        .withAdministratorPassword(administratorPassword)
-                        .create();
+            SqlServer sqlServerInSecondaryLocation = azureResourceManager.sqlServers()
+                    .define(Utils.randomResourceName(azureResourceManager, slaveSqlServer1Name, 15))
+                    .withRegion(Region.US_EAST2).withExistingResourceGroup(rgName)
+                    .withAdministratorLogin(administratorLogin).withAdministratorPassword(administratorPassword)
+                    .create();
             Utils.print(sqlServerInSecondaryLocation);
 
             System.out.println("Creating database in slave SQL Server.");
             SqlDatabase secondaryDatabase = sqlServerInSecondaryLocation.databases().define(databaseName)
-                    .withSourceDatabase(masterDatabase)
-                    .withMode(CreateMode.ONLINE_SECONDARY)
-                    .create();
+                    .withSourceDatabase(masterDatabase).withMode(CreateMode.ONLINE_SECONDARY).create();
             Utils.print(secondaryDatabase);
 
             // ============================================================
             // Create another slave SQLServer/Database for the master database
             System.out.println("Creating server in another location for master SQL Server");
-            SqlServer sqlServerInEurope = azure.sqlServers()
-                    .define(Utils.createRandomName(slaveSqlServer2Name))
-                        .withRegion(Region.EUROPE_WEST)
-                        .withExistingResourceGroup(rgName)
-                        .withAdministratorLogin(administratorLogin)
-                        .withAdministratorPassword(administratorPassword)
-                        .create();
+            SqlServer sqlServerInEurope = azureResourceManager.sqlServers()
+                    .define(Utils.randomResourceName(azureResourceManager, slaveSqlServer2Name, 15))
+                    .withRegion(Region.EUROPE_WEST).withExistingResourceGroup(rgName)
+                    .withAdministratorLogin(administratorLogin).withAdministratorPassword(administratorPassword)
+                    .create();
             Utils.print(sqlServerInEurope);
 
             System.out.println("Creating database in second slave SQL Server.");
             SqlDatabase secondaryDatabaseInEurope = sqlServerInEurope.databases().define(databaseName)
-                    .withSourceDatabase(masterDatabase)
-                    .withMode(CreateMode.ONLINE_SECONDARY)
-                    .create();
+                    .withSourceDatabase(masterDatabase).withMode(CreateMode.ONLINE_SECONDARY).create();
             Utils.print(secondaryDatabaseInEurope);
 
             // ============================================================
@@ -139,25 +127,26 @@ public final class ManageSqlDatabasesAcrossDifferentDataCenters {
 
             System.out.println("Creating virtual networks in different regions.");
 
-            for (Region region: regions) {
-                creatableNetworks.add(azure.networks().define(Utils.createRandomName(networkNamePrefix))
-                        .withRegion(region)
-                        .withExistingResourceGroup(rgName));
+            for (Region region : regions) {
+                creatableNetworks.add(azureResourceManager.networks()
+                        .define(Utils.randomResourceName(azureResourceManager, networkNamePrefix, 15))
+                        .withRegion(region).withExistingResourceGroup(rgName));
             }
-            Collection<Network> networks = azure.networks().create(creatableNetworks).values();
+            Collection<Network> networks = azureResourceManager.networks().create(creatableNetworks).values();
 
             // ============================================================
             // Create virtual machines attached to different virtual networks created above.
             List<Creatable<VirtualMachine>> creatableVirtualMachines = new ArrayList<>();
             System.out.println("Creating virtual machines in different regions.");
 
-            for (Network network: networks) {
-                String vmName = Utils.createRandomName(virtualMachineNamePrefix);
-                Creatable<PublicIPAddress> publicIPAddressCreatable = azure.publicIPAddresses().define(vmName)
+            for (Network network : networks) {
+                String vmName = Utils.randomResourceName(azureResourceManager, virtualMachineNamePrefix, 15);
+                Creatable<PublicIpAddress> publicIPAddressCreatable = azureResourceManager.publicIpAddresses()
+                        .define(vmName)
                         .withRegion(network.region())
                         .withExistingResourceGroup(rgName)
                         .withLeafDomainLabel(vmName);
-                creatableVirtualMachines.add(azure.virtualMachines().define(vmName)
+                creatableVirtualMachines.add(azureResourceManager.virtualMachines().define(vmName)
                         .withRegion(network.region())
                         .withExistingResourceGroup(rgName)
                         .withExistingPrimaryNetwork(network)
@@ -171,7 +160,7 @@ public final class ManageSqlDatabasesAcrossDifferentDataCenters {
             }
 
             HashMap<String, String> ipAddresses = new HashMap<>();
-            for (VirtualMachine virtualMachine: azure.virtualMachines().create(creatableVirtualMachines).values()) {
+            for (VirtualMachine virtualMachine: azureResourceManager.virtualMachines().create(creatableVirtualMachines).values()) {
                 ipAddresses.put(virtualMachine.name(), virtualMachine.getPrimaryPublicIPAddress().ipAddress());
             }
 
@@ -184,7 +173,7 @@ public final class ManageSqlDatabasesAcrossDifferentDataCenters {
 
             for (SqlServer sqlServer: sqlServers) {
                 for (Map.Entry<String, String> ipAddress: ipAddresses.entrySet()) {
-                    sqlServer.firewallRules().define(ipAddress.getKey()).withIPAddress(ipAddress.getValue()).create();
+                    sqlServer.firewallRules().define(ipAddress.getKey()).withIpAddress(ipAddress.getValue()).create();
                 }
             }
 
@@ -200,7 +189,7 @@ public final class ManageSqlDatabasesAcrossDifferentDataCenters {
             // Delete the SQL Server.
             System.out.println("Deleting all Sql Servers");
             for (SqlServer sqlServer: sqlServers) {
-                azure.sqlServers().deleteById(sqlServer.id());
+                azureResourceManager.sqlServers().deleteById(sqlServer.id());
             }
             return true;
         } catch (Exception f) {
@@ -209,7 +198,7 @@ public final class ManageSqlDatabasesAcrossDifferentDataCenters {
         } finally {
             try {
                 System.out.println("Deleting Resource Group: " + rgName);
-                azure.resourceGroups().deleteByName(rgName);
+                azureResourceManager.resourceGroups().deleteByName(rgName);
                 System.out.println("Deleted Resource Group: " + rgName);
             }
             catch (Exception e) {
@@ -226,22 +215,17 @@ public final class ManageSqlDatabasesAcrossDifferentDataCenters {
     public static void main(String[] args) {
         try {
 
-            final File credFile = new File(System.getenv("AZURE_AUTH_LOCATION"));
+            final AzureProfile profile = new AzureProfile(AzureEnvironment.AZURE);
+            final TokenCredential credential = new DefaultAzureCredentialBuilder()
+                    .authorityHost(profile.getEnvironment().getActiveDirectoryEndpoint()).build();
 
-            ApplicationTokenCredentials credentials = ApplicationTokenCredentials.fromFile(credFile);
-            RestClient restClient = new RestClient.Builder()
-                    .withBaseUrl(AzureEnvironment.AZURE, AzureEnvironment.Endpoint.RESOURCE_MANAGER)
-                    .withSerializerAdapter(new AzureJacksonAdapter())
-                    .withReadTimeout(150, TimeUnit.SECONDS)
-                    .withLogLevel(LogLevel.BODY)
-                    .withResponseBuilderFactory(new AzureResponseBuilder.Factory())
-                    .withCredentials(credentials).build();
-            Azure azure = Azure.authenticate(restClient, credentials.domain(), credentials.defaultSubscriptionId()).withDefaultSubscription();
+            AzureResourceManager azureResourceManager = AzureResourceManager.configure()
+                    .withLogLevel(HttpLogDetailLevel.BASIC).authenticate(credential, profile).withDefaultSubscription();
 
             // Print selected subscription
-            System.out.println("Selected subscription: " + azure.subscriptionId());
+            System.out.println("Selected subscription: " + azureResourceManager.subscriptionId());
 
-            runSample(azure);
+            runSample(azureResourceManager);
        } catch (Exception e) {
             System.out.println(e.getMessage());
             e.printStackTrace();
