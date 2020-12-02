@@ -15,7 +15,8 @@
         <artifactId>exec-maven-plugin</artifactId>
         <version>1.4.0</version>
         <configuration>
-          <mainClass>com.microsoft.azure.management.sql.samples.ManageSqlDatabasesAcrossDifferentDataCenters</mainClass>
+          <mainClass>com.azure.resourcemanager.sql.samples.ManageSqlDatabasesAcrossDifferentDataCenters</mainClass>
+          <cleanupDaemonThreads>false</cleanupDaemonThreads>
         </configuration>
       </plugin>
       <plugin>
@@ -40,7 +41,7 @@
               </descriptorRefs>
               <archive>
                 <manifest>
-                  <mainClass>com.microsoft.azure.management.sql.samples.ManageSqlDatabasesAcrossDifferentDataCenters.java</mainClass>
+                  <mainClass>com.azure.resourcemanager.sql.samples.ManageSqlDatabasesAcrossDifferentDataCenters.java</mainClass>
                 </manifest>
               </archive>
             </configuration>
@@ -53,7 +54,7 @@
     <dependency>
       <groupId>com.azure.resourcemanager</groupId>
       <artifactId>azure-resourcemanager</artifactId>
-      <version>2.0.0-beta.5</version>
+      <version>2.1.0</version>
     </dependency>
     <dependency>
       <groupId>com.azure</groupId>
@@ -63,17 +64,7 @@
     <dependency>
       <groupId>commons-net</groupId>
       <artifactId>commons-net</artifactId>
-      <version>3.3</version>
-    </dependency>
-    <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
-      <version>2.6</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-lang3</artifactId>
-      <version>3.7</version>
+      <version>3.6</version>
     </dependency>
   </dependencies>
 </project>
